@@ -585,7 +585,7 @@ console.log('Hello World!');
             
             let currentOffset = 0;
             
-            while (currentOffset < totalHeight - targetHeight) {
+            while (currentOffset + targetHeight < totalHeight) {
                 const nextTargetOffset = currentOffset + targetHeight;
                 let bestBreakPoint = null;
                 let minOverhang = Infinity; // Prefer breaks with minimal content overhang
