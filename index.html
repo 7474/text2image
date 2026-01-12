@@ -457,6 +457,7 @@ console.log('Hello World!');
         // before capturing the canvas
         const LAYOUT_MEASURE_DELAY_MS = 50;  // Time to wait for natural size measurement
         const LAYOUT_SETTLE_DELAY_MS = 100;  // Time to wait for layout to settle after style changes
+        const DEFAULT_PREVIEW_PADDING = '20px';  // Default padding for off-screen preview
 
         // Get selected viewport dimensions
         function getViewportDimensions() {
@@ -631,7 +632,7 @@ console.log('Hello World!');
                     offscreenPreview.style.width = '';
                     offscreenPreview.style.height = '';
                     offscreenPreview.style.overflow = '';
-                    offscreenPreview.style.padding = '20px';
+                    offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
                     offscreenPreview.style.transform = '';
                     offscreenPreview.style.transformOrigin = '';
                     offscreenContainer.style.width = '';
@@ -670,8 +671,12 @@ console.log('Hello World!');
                 // Convert canvas to data URI
                 renderedDataUri = canvas.toDataURL('image/png');
                 
-                // Display data URI in preview as img element
-                previewDiv.innerHTML = `<img src="${renderedDataUri}" alt="Rendered markdown preview" />`;
+                // Display data URI in preview as img element (using DOM methods for security)
+                const img = document.createElement('img');
+                img.src = renderedDataUri;
+                img.alt = 'Rendered markdown preview';
+                previewDiv.innerHTML = '';
+                previewDiv.appendChild(img);
             } catch (error) {
                 console.error('Canvas generation error:', error);
                 showStatus('❌ 画像生成エラー: ' + error.message, false);
