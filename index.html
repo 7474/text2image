@@ -87,6 +87,15 @@
             min-height: 400px;
             overflow: auto;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .preview-container img {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
         }
 
         .viewport-selector {
@@ -131,38 +140,59 @@
             /* Ensure padding is included in width/height calculations for viewport optimization */
             box-sizing: border-box;
         }
+        
+        /* Hidden rendering container for off-screen rendering */
+        #offscreen-container {
+            position: fixed;
+            top: -10000px;
+            left: -10000px;
+            visibility: hidden;
+            pointer-events: none;
+            background: white;
+        }
+        
+        #offscreen-preview {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 9pt;
+            line-height: 1.6;
+            color: #333;
+            box-sizing: border-box;
+            padding: 20px;
+            background: white;
+        }
 
         /* GitHub Flavored Markdown Styles */
-        #preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6 {
+        #preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6,
+        #offscreen-preview h1, #offscreen-preview h2, #offscreen-preview h3, #offscreen-preview h4, #offscreen-preview h5, #offscreen-preview h6 {
             margin-top: 24px;
             margin-bottom: 16px;
             font-weight: 600;
             line-height: 1.25;
         }
 
-        #preview h1 {
+        #preview h1, #offscreen-preview h1 {
             font-size: 2em;
             border-bottom: 1px solid #eaecef;
             padding-bottom: 0.3em;
         }
 
-        #preview h2 {
+        #preview h2, #offscreen-preview h2 {
             font-size: 1.5em;
             border-bottom: 1px solid #eaecef;
             padding-bottom: 0.3em;
         }
 
-        #preview h3 { font-size: 1.25em; }
-        #preview h4 { font-size: 1em; }
-        #preview h5 { font-size: 0.875em; }
-        #preview h6 { font-size: 0.85em; color: #6a737d; }
+        #preview h3, #offscreen-preview h3 { font-size: 1.25em; }
+        #preview h4, #offscreen-preview h4 { font-size: 1em; }
+        #preview h5, #offscreen-preview h5 { font-size: 0.875em; }
+        #preview h6, #offscreen-preview h6 { font-size: 0.85em; color: #6a737d; }
 
-        #preview p {
+        #preview p, #offscreen-preview p {
             margin-top: 0;
             margin-bottom: 16px;
         }
 
-        #preview code {
+        #preview code, #offscreen-preview code {
             background-color: rgba(27,31,35,0.05);
             border-radius: 3px;
             font-size: 85%;
@@ -171,7 +201,7 @@
             font-family: 'Consolas', 'Monaco', monospace;
         }
 
-        #preview pre {
+        #preview pre, #offscreen-preview pre {
             background-color: #f6f8fa;
             border-radius: 6px;
             font-size: 85%;
@@ -181,7 +211,7 @@
             margin-bottom: 16px;
         }
 
-        #preview pre code {
+        #preview pre code, #offscreen-preview pre code {
             background-color: transparent;
             border: 0;
             display: inline;
@@ -192,58 +222,58 @@
             word-wrap: normal;
         }
 
-        #preview blockquote {
+        #preview blockquote, #offscreen-preview blockquote {
             border-left: 0.25em solid #dfe2e5;
             color: #6a737d;
             padding: 0 1em;
             margin: 0 0 16px 0;
         }
 
-        #preview ul, #preview ol {
+        #preview ul, #preview ol, #offscreen-preview ul, #offscreen-preview ol {
             padding-left: 2em;
             margin-bottom: 16px;
         }
 
-        #preview li {
+        #preview li, #offscreen-preview li {
             margin-top: 0.25em;
         }
 
-        #preview table {
+        #preview table, #offscreen-preview table {
             border-collapse: collapse;
             border-spacing: 0;
             margin-bottom: 16px;
             width: 100%;
         }
 
-        #preview table th, #preview table td {
+        #preview table th, #preview table td, #offscreen-preview table th, #offscreen-preview table td {
             border: 1px solid #dfe2e5;
             padding: 6px 13px;
         }
 
-        #preview table th {
+        #preview table th, #offscreen-preview table th {
             background-color: #f6f8fa;
             font-weight: 600;
         }
 
-        #preview table tr {
+        #preview table tr, #offscreen-preview table tr {
             background-color: #fff;
             border-top: 1px solid #c6cbd1;
         }
 
-        #preview table tr:nth-child(2n) {
+        #preview table tr:nth-child(2n), #offscreen-preview table tr:nth-child(2n) {
             background-color: #f6f8fa;
         }
 
-        #preview a {
+        #preview a, #offscreen-preview a {
             color: #0366d6;
             text-decoration: none;
         }
 
-        #preview a:hover {
+        #preview a:hover, #offscreen-preview a:hover {
             text-decoration: underline;
         }
 
-        #preview hr {
+        #preview hr, #offscreen-preview hr {
             height: 0.25em;
             padding: 0;
             margin: 24px 0;
@@ -251,12 +281,12 @@
             border: 0;
         }
 
-        #preview img {
+        #preview img, #offscreen-preview img {
             max-width: 100%;
             box-sizing: content-box;
         }
 
-        #preview input[type="checkbox"] {
+        #preview input[type="checkbox"], #offscreen-preview input[type="checkbox"] {
             margin-right: 0.5em;
         }
 
@@ -387,6 +417,11 @@ console.log('Hello World!');
             </div>
         </div>
     </div>
+    
+    <!-- Hidden off-screen container for rendering without flickering -->
+    <div id="offscreen-container">
+        <div id="offscreen-preview"></div>
+    </div>
 
     <!-- Marked.js for Markdown parsing with GFM support -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
@@ -406,13 +441,15 @@ console.log('Hello World!');
 
         const inputText = document.getElementById('input-text');
         const previewDiv = document.getElementById('preview');
+        const offscreenContainer = document.getElementById('offscreen-container');
+        const offscreenPreview = document.getElementById('offscreen-preview');
         const renderBtn = document.getElementById('render-btn');
         const copyBtn = document.getElementById('copy-btn');
         const statusDiv = document.getElementById('status');
         const viewportSizeSelect = document.getElementById('viewport-size');
         const viewportInfo = document.getElementById('viewport-info');
 
-        let renderedCanvas = null;
+        let renderedDataUri = null;
         let hasRenderedContent = false;
         
         // Layout timing constants for viewport optimization
@@ -420,6 +457,7 @@ console.log('Hello World!');
         // before capturing the canvas
         const LAYOUT_MEASURE_DELAY_MS = 50;  // Time to wait for natural size measurement
         const LAYOUT_SETTLE_DELAY_MS = 100;  // Time to wait for layout to settle after style changes
+        const DEFAULT_PREVIEW_PADDING = '20px';  // Default padding for off-screen preview
 
         // Get selected viewport dimensions
         function getViewportDimensions() {
@@ -495,10 +533,12 @@ console.log('Hello World!');
                 
                 // Parse markdown to HTML
                 const html = marked.parse(normalizedText);
-                previewDiv.innerHTML = html;
+                
+                // Render to off-screen element (no flicker)
+                offscreenPreview.innerHTML = html;
                 hasRenderedContent = true;
                 
-                // Generate canvas
+                // Generate canvas and data URI
                 generateCanvas();
                 
                 showStatus('✅ レンダリングが完了しました！', true);
@@ -509,81 +549,76 @@ console.log('Hello World!');
             }
         }
 
-        // Generate canvas from preview
+        // Generate canvas from off-screen preview
         async function generateCanvas() {
             copyBtn.disabled = true;
             copyBtn.textContent = '🔄 画像を生成中...';
             
             try {
                 const viewportDims = getViewportDimensions();
-                const previewContainer = previewDiv.parentElement;
                 
                 // Store original styles
-                const originalPreviewStyle = {
-                    width: previewDiv.style.width,
-                    height: previewDiv.style.height,
-                    overflow: previewDiv.style.overflow,
-                    padding: previewDiv.style.padding,
-                    transform: previewDiv.style.transform,
-                    transformOrigin: previewDiv.style.transformOrigin
+                const originalStyle = {
+                    width: offscreenPreview.style.width,
+                    height: offscreenPreview.style.height,
+                    overflow: offscreenPreview.style.overflow,
+                    padding: offscreenPreview.style.padding,
+                    transform: offscreenPreview.style.transform,
+                    transformOrigin: offscreenPreview.style.transformOrigin
                 };
                 const originalContainerStyle = {
-                    width: previewContainer.style.width,
-                    height: previewContainer.style.height,
-                    minHeight: previewContainer.style.minHeight,
-                    overflow: previewContainer.style.overflow,
-                    display: previewContainer.style.display,
-                    alignItems: previewContainer.style.alignItems,
-                    justifyContent: previewContainer.style.justifyContent
+                    width: offscreenContainer.style.width,
+                    height: offscreenContainer.style.height,
+                    overflow: offscreenContainer.style.overflow,
+                    display: offscreenContainer.style.display,
+                    alignItems: offscreenContainer.style.alignItems,
+                    justifyContent: offscreenContainer.style.justifyContent
                 };
                 
                 let canvas;
                 if (viewportDims) {
                     // Set fixed width to viewport width to ensure content wraps at the correct width
-                    // This prevents premature line wrapping based on container/viewport size
-                    previewDiv.style.width = viewportDims.width + 'px';
-                    previewDiv.style.height = '';
-                    previewDiv.style.overflow = '';
+                    offscreenPreview.style.width = viewportDims.width + 'px';
+                    offscreenPreview.style.height = '';
+                    offscreenPreview.style.overflow = '';
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_MEASURE_DELAY_MS));
                     
                     const naturalWidth = viewportDims.width;
-                    const naturalHeight = previewDiv.scrollHeight;
+                    const naturalHeight = offscreenPreview.scrollHeight;
                     
                     // Calculate if vertical scaling is needed (width is already fixed)
                     const scaleY = viewportDims.height / naturalHeight;
                     const scale = Math.min(scaleY, 1); // Don't scale up, only down
                     
                     // Apply viewport dimensions to container
-                    previewContainer.style.width = viewportDims.width + 'px';
-                    previewContainer.style.height = viewportDims.height + 'px';
-                    previewContainer.style.minHeight = 'auto';
-                    previewContainer.style.overflow = 'hidden';
-                    previewContainer.style.display = 'flex';
-                    previewContainer.style.alignItems = 'flex-start';
-                    previewContainer.style.justifyContent = 'flex-start';
+                    offscreenContainer.style.width = viewportDims.width + 'px';
+                    offscreenContainer.style.height = viewportDims.height + 'px';
+                    offscreenContainer.style.overflow = 'hidden';
+                    offscreenContainer.style.display = 'flex';
+                    offscreenContainer.style.alignItems = 'flex-start';
+                    offscreenContainer.style.justifyContent = 'flex-start';
                     
                     if (scale < 1) {
                         // Content height is too large, scale it down
-                        previewDiv.style.width = naturalWidth + 'px';
-                        previewDiv.style.height = naturalHeight + 'px';
-                        previewDiv.style.transform = `scale(${scale})`;
-                        previewDiv.style.transformOrigin = 'top left';
-                        previewDiv.style.overflow = 'hidden';
+                        offscreenPreview.style.width = naturalWidth + 'px';
+                        offscreenPreview.style.height = naturalHeight + 'px';
+                        offscreenPreview.style.transform = `scale(${scale})`;
+                        offscreenPreview.style.transformOrigin = 'top left';
+                        offscreenPreview.style.overflow = 'hidden';
                     } else {
                         // Content fits vertically, add padding to center if smaller
                         const paddingTop = Math.max(0, (viewportDims.height - naturalHeight) / 2);
-                        // Use 4-value syntax for explicit centering: top right bottom left
-                        previewDiv.style.padding = `${paddingTop}px 0px ${paddingTop}px 0px`;
-                        previewDiv.style.width = viewportDims.width + 'px';
-                        previewDiv.style.height = viewportDims.height + 'px';
-                        previewDiv.style.overflow = 'hidden';
+                        offscreenPreview.style.padding = `${paddingTop}px 0px ${paddingTop}px 0px`;
+                        offscreenPreview.style.width = viewportDims.width + 'px';
+                        offscreenPreview.style.height = viewportDims.height + 'px';
+                        offscreenPreview.style.overflow = 'hidden';
                     }
                     
                     // Wait for layout to settle
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
                     
                     // Create canvas with viewport dimensions
-                    canvas = await html2canvas(previewContainer, {
+                    canvas = await html2canvas(offscreenContainer, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
                         logging: false,
@@ -593,25 +628,24 @@ console.log('Hello World!');
                         height: viewportDims.height
                     });
                 } else {
-                    // Auto mode - use content size, restore natural sizing
-                    previewDiv.style.width = '';
-                    previewDiv.style.height = '';
-                    previewDiv.style.overflow = '';
-                    previewDiv.style.padding = '';
-                    previewDiv.style.transform = '';
-                    previewDiv.style.transformOrigin = '';
-                    previewContainer.style.width = '';
-                    previewContainer.style.height = '';
-                    previewContainer.style.minHeight = '';
-                    previewContainer.style.overflow = '';
-                    previewContainer.style.display = '';
-                    previewContainer.style.alignItems = '';
-                    previewContainer.style.justifyContent = '';
+                    // Auto mode - use content size
+                    offscreenPreview.style.width = '';
+                    offscreenPreview.style.height = '';
+                    offscreenPreview.style.overflow = '';
+                    offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
+                    offscreenPreview.style.transform = '';
+                    offscreenPreview.style.transformOrigin = '';
+                    offscreenContainer.style.width = '';
+                    offscreenContainer.style.height = '';
+                    offscreenContainer.style.overflow = '';
+                    offscreenContainer.style.display = '';
+                    offscreenContainer.style.alignItems = '';
+                    offscreenContainer.style.justifyContent = '';
                     
                     // Wait for layout to settle
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
                     
-                    canvas = await html2canvas(previewDiv, {
+                    canvas = await html2canvas(offscreenPreview, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
                         logging: false,
@@ -621,21 +655,28 @@ console.log('Hello World!');
                 }
                 
                 // Restore original styles
-                previewDiv.style.width = originalPreviewStyle.width;
-                previewDiv.style.height = originalPreviewStyle.height;
-                previewDiv.style.overflow = originalPreviewStyle.overflow;
-                previewDiv.style.padding = originalPreviewStyle.padding;
-                previewDiv.style.transform = originalPreviewStyle.transform;
-                previewDiv.style.transformOrigin = originalPreviewStyle.transformOrigin;
-                previewContainer.style.width = originalContainerStyle.width;
-                previewContainer.style.height = originalContainerStyle.height;
-                previewContainer.style.minHeight = originalContainerStyle.minHeight;
-                previewContainer.style.overflow = originalContainerStyle.overflow;
-                previewContainer.style.display = originalContainerStyle.display;
-                previewContainer.style.alignItems = originalContainerStyle.alignItems;
-                previewContainer.style.justifyContent = originalContainerStyle.justifyContent;
+                offscreenPreview.style.width = originalStyle.width;
+                offscreenPreview.style.height = originalStyle.height;
+                offscreenPreview.style.overflow = originalStyle.overflow;
+                offscreenPreview.style.padding = originalStyle.padding;
+                offscreenPreview.style.transform = originalStyle.transform;
+                offscreenPreview.style.transformOrigin = originalStyle.transformOrigin;
+                offscreenContainer.style.width = originalContainerStyle.width;
+                offscreenContainer.style.height = originalContainerStyle.height;
+                offscreenContainer.style.overflow = originalContainerStyle.overflow;
+                offscreenContainer.style.display = originalContainerStyle.display;
+                offscreenContainer.style.alignItems = originalContainerStyle.alignItems;
+                offscreenContainer.style.justifyContent = originalContainerStyle.justifyContent;
                 
-                renderedCanvas = canvas;
+                // Convert canvas to data URI
+                renderedDataUri = canvas.toDataURL('image/png');
+                
+                // Display data URI in preview as img element (using DOM methods for security)
+                const img = document.createElement('img');
+                img.src = renderedDataUri;
+                img.alt = 'Rendered markdown preview';
+                previewDiv.innerHTML = '';
+                previewDiv.appendChild(img);
             } catch (error) {
                 console.error('Canvas generation error:', error);
                 showStatus('❌ 画像生成エラー: ' + error.message, false);
@@ -648,7 +689,7 @@ console.log('Hello World!');
 
         // Copy canvas to clipboard
         async function copyToClipboard() {
-            if (!renderedCanvas) {
+            if (!renderedDataUri) {
                 showStatus('❌ 先にレンダリングを実行してください', false);
                 return;
             }
@@ -657,43 +698,42 @@ console.log('Hello World!');
                 copyBtn.disabled = true;
                 copyBtn.textContent = '📋 コピー中...';
 
-                // Convert canvas to blob
-                renderedCanvas.toBlob(async (blob) => {
-                    if (!blob) {
-                        throw new Error('画像の生成に失敗しました');
-                    }
+                // Convert data URI to blob efficiently
+                const base64 = renderedDataUri.split(',')[1];
+                const byteString = atob(base64);
+                const arrayBuffer = new ArrayBuffer(byteString.length);
+                const uint8Array = new Uint8Array(arrayBuffer);
+                for (let i = 0; i < byteString.length; i++) {
+                    uint8Array[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([arrayBuffer], { type: 'image/png' });
 
-                    try {
-                        // Copy to clipboard using Clipboard API
-                        await navigator.clipboard.write([
-                            new ClipboardItem({
-                                'image/png': blob
-                            })
-                        ]);
-                        
-                        showStatus('✅ 画像をクリップボードにコピーしました！', true);
-                    } catch (err) {
-                        console.error('Clipboard API error:', err);
-                        
-                        // Fallback: download image if clipboard API fails
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'rendered-markdown.png';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        
-                        showStatus('⚠️ クリップボードへのコピーに失敗しました。画像をダウンロードしました。', false);
-                    } finally {
-                        copyBtn.disabled = false;
-                        copyBtn.textContent = '📋 画像をコピー';
-                    }
-                }, 'image/png');
+                try {
+                    // Copy to clipboard using Clipboard API
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            'image/png': blob
+                        })
+                    ]);
+                    
+                    showStatus('✅ 画像をクリップボードにコピーしました！', true);
+                } catch (err) {
+                    console.error('Clipboard API error:', err);
+                    
+                    // Fallback: download image if clipboard API fails
+                    const a = document.createElement('a');
+                    a.href = renderedDataUri;
+                    a.download = 'rendered-markdown.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    showStatus('⚠️ クリップボードへのコピーに失敗しました。画像をダウンロードしました。', false);
+                }
             } catch (error) {
                 console.error('Copy error:', error);
                 showStatus('❌ コピーエラー: ' + error.message, false);
+            } finally {
                 copyBtn.disabled = false;
                 copyBtn.textContent = '📋 画像をコピー';
             }
@@ -713,7 +753,7 @@ console.log('Hello World!');
             }
             
             // Re-generate canvas if already rendered
-            if (renderedCanvas && hasRenderedContent) {
+            if (renderedDataUri && hasRenderedContent) {
                 generateCanvas();
             }
         });
