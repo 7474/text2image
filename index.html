@@ -86,6 +86,41 @@
             background: white;
             min-height: 400px;
             overflow: auto;
+            position: relative;
+        }
+
+        .viewport-selector {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .viewport-selector label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .viewport-selector select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .viewport-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .viewport-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
         }
 
         #preview {
@@ -330,6 +365,17 @@ console.log('Hello World!');
             
             <div class="panel">
                 <h2>プレビュー</h2>
+                <div class="viewport-selector">
+                    <label for="viewport-size">📐 画像サイズ:</label>
+                    <select id="viewport-size">
+                        <option value="1200x675">Twitter 16:9 (1200x675px) - 推奨</option>
+                        <option value="1200x1200">Twitter Square (1200x1200px)</option>
+                        <option value="1200x628">Twitter Card (1200x628px)</option>
+                        <option value="600x335">Small 16:9 (600x335px)</option>
+                        <option value="auto">自動 (コンテンツに合わせる)</option>
+                    </select>
+                </div>
+                <div class="viewport-info" id="viewport-info">選択したサイズで画像が生成されます</div>
                 <div class="preview-container">
                     <div id="preview">
                         <p>左側のテキストエリアにMarkdownを入力して、「レンダリング」ボタンをクリックしてください。</p>
@@ -360,8 +406,22 @@ console.log('Hello World!');
         const renderBtn = document.getElementById('render-btn');
         const copyBtn = document.getElementById('copy-btn');
         const statusDiv = document.getElementById('status');
+        const viewportSizeSelect = document.getElementById('viewport-size');
+        const viewportInfo = document.getElementById('viewport-info');
 
         let renderedCanvas = null;
+
+        // Get selected viewport dimensions
+        function getViewportDimensions() {
+            const selectedSize = viewportSizeSelect.value;
+            
+            if (selectedSize === 'auto') {
+                return null; // Use actual content size
+            }
+            
+            const [width, height] = selectedSize.split('x').map(Number);
+            return { width, height };
+        }
 
         // Show status message
         function showStatus(message, isSuccess = true) {
@@ -403,13 +463,32 @@ console.log('Hello World!');
                 copyBtn.disabled = true;
                 copyBtn.textContent = '🔄 画像を生成中...';
                 
-                const canvas = await html2canvas(previewDiv, {
-                    backgroundColor: '#ffffff',
-                    scale: 2, // Higher quality
-                    logging: false,
-                    useCORS: true,
-                    allowTaint: true
-                });
+                const viewportDims = getViewportDimensions();
+                
+                let canvas;
+                if (viewportDims) {
+                    // Create canvas with specific dimensions
+                    canvas = await html2canvas(previewDiv, {
+                        backgroundColor: '#ffffff',
+                        scale: 2, // Higher quality
+                        logging: false,
+                        useCORS: true,
+                        allowTaint: true,
+                        width: viewportDims.width,
+                        height: viewportDims.height,
+                        windowWidth: viewportDims.width,
+                        windowHeight: viewportDims.height
+                    });
+                } else {
+                    // Auto mode - use content size
+                    canvas = await html2canvas(previewDiv, {
+                        backgroundColor: '#ffffff',
+                        scale: 2, // Higher quality
+                        logging: false,
+                        useCORS: true,
+                        allowTaint: true
+                    });
+                }
                 
                 renderedCanvas = canvas;
                 copyBtn.disabled = false;
@@ -477,6 +556,21 @@ console.log('Hello World!');
         // Event listeners
         renderBtn.addEventListener('click', renderMarkdown);
         copyBtn.addEventListener('click', copyToClipboard);
+        
+        // Update info when viewport size changes
+        viewportSizeSelect.addEventListener('change', () => {
+            const selectedSize = viewportSizeSelect.value;
+            if (selectedSize === 'auto') {
+                viewportInfo.textContent = 'コンテンツのサイズに合わせて画像が生成されます';
+            } else {
+                viewportInfo.textContent = `${selectedSize}px のサイズで画像が生成されます (Twitter/X 最適化)`;
+            }
+            
+            // Re-generate canvas if already rendered
+            if (renderedCanvas && previewDiv.innerHTML !== '<p>左側のテキストエリアにMarkdownを入力して、「レンダリング」ボタンをクリックしてください。</p>') {
+                generateCanvas();
+            }
+        });
 
         // Auto-render on Enter key (Ctrl/Cmd + Enter)
         inputText.addEventListener('keydown', (e) => {
