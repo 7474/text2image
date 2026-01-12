@@ -629,14 +629,7 @@ console.log('Hello World!');
                             useCORS: true,
                             allowTaint: true,
                             width: viewportDims.width,
-                            height: viewportDims.height,
-                            onclone: (clonedDoc) => {
-                                const clonedPreview = clonedDoc.getElementById('offscreen-preview');
-                                if (clonedPreview) {
-                                    clonedPreview.style.transform = 'none';
-                                    clonedPreview.style.transformOrigin = '';
-                                }
-                            }
+                            height: viewportDims.height
                         });
                         
                         renderedDataUris.push(canvas.toDataURL('image/png'));
@@ -668,14 +661,7 @@ console.log('Hello World!');
                                 useCORS: true,
                                 allowTaint: true,
                                 width: viewportDims.width,
-                                height: viewportDims.height,
-                                onclone: (clonedDoc) => {
-                                    const clonedPreview = clonedDoc.getElementById('offscreen-preview');
-                                    if (clonedPreview) {
-                                        clonedPreview.style.transform = 'none';
-                                        clonedPreview.style.transformOrigin = '';
-                                    }
-                                }
+                                height: viewportDims.height
                             });
                             
                             renderedDataUris.push(canvas.toDataURL('image/png'));
