@@ -568,6 +568,7 @@ console.log('Hello World!');
         }
 
         // Find optimal break points to avoid splitting elements across images
+        // Strategy: Maximize content per image while avoiding cutting elements mid-way
         function findOptimalBreakPoints(container, targetHeight, totalHeight) {
             const breakPoints = [0]; // Always start at 0
             
@@ -586,51 +587,49 @@ console.log('Hello World!');
             let currentOffset = 0;
             
             while (currentOffset + targetHeight < totalHeight) {
-                const nextTargetOffset = currentOffset + targetHeight;
-                let bestBreakPoint = null;
-                let minOverhang = Infinity; // Prefer breaks with minimal content overhang
+                const idealBreakPoint = currentOffset + targetHeight;
                 
-                // Find the best place to break that avoids splitting elements
+                // Check if any element would be cut at the ideal break point
+                let elementWouldBeCut = false;
+                let breakBeforeElement = null;
+                
                 for (const child of children) {
                     const childTop = child.offsetTop;
                     const childBottom = childTop + child.offsetHeight;
                     
-                    // Skip elements that are completely before current position
-                    if (childBottom <= currentOffset) {
-                        continue;
-                    }
-                    
-                    // Option 1: Break right after this element ends (if it ends near our target)
-                    if (childBottom > currentOffset && childBottom <= nextTargetOffset + targetHeight * 0.2) {
-                        const overhang = Math.max(0, childBottom - nextTargetOffset);
-                        if (overhang < minOverhang || bestBreakPoint === null) {
-                            minOverhang = overhang;
-                            bestBreakPoint = childBottom;
+                    // Check if this element straddles the ideal break point
+                    // (starts before and ends after the break point)
+                    if (childTop < idealBreakPoint && childBottom > idealBreakPoint) {
+                        elementWouldBeCut = true;
+                        
+                        // We need to break either before or after this element
+                        // Choose based on which gives us more content in the current image
+                        const contentBeforeElement = childTop - currentOffset;
+                        const contentIncludingElement = childBottom - currentOffset;
+                        
+                        // If breaking before gives us at least 50% of target height, do that
+                        // Otherwise, include the entire element even if it goes over
+                        if (contentBeforeElement >= targetHeight * 0.5) {
+                            breakBeforeElement = childTop;
+                        } else if (contentIncludingElement <= targetHeight * 1.5) {
+                            // Include the entire element if it doesn't make image too large
+                            breakBeforeElement = childBottom;
+                        } else {
+                            // Element is too large, break before it
+                            breakBeforeElement = childTop;
                         }
-                    }
-                    
-                    // Option 2: Break right before this element starts (if it would be cut)
-                    if (childTop > currentOffset && childTop < nextTargetOffset && childBottom > nextTargetOffset) {
-                        // This element would be cut by our target - consider breaking before it
-                        const underhang = nextTargetOffset - childTop;
-                        // Prefer this if the element would lose less than 20% and we'd avoid splitting
-                        if (underhang < targetHeight * 0.2 && childTop > currentOffset) {
-                            if (underhang < minOverhang || bestBreakPoint === null) {
-                                minOverhang = underhang;
-                                bestBreakPoint = childTop;
-                            }
-                        }
+                        break; // Found the first element that would be cut
                     }
                 }
                 
-                // Use the best break point we found, or fall back to fixed offset
-                if (bestBreakPoint !== null && bestBreakPoint > currentOffset) {
-                    breakPoints.push(bestBreakPoint);
-                    currentOffset = bestBreakPoint;
+                // Set the next break point
+                if (elementWouldBeCut && breakBeforeElement !== null) {
+                    breakPoints.push(breakBeforeElement);
+                    currentOffset = breakBeforeElement;
                 } else {
-                    // No good break point found, use fixed offset
-                    currentOffset = nextTargetOffset;
-                    breakPoints.push(currentOffset);
+                    // No element would be cut, use the ideal break point
+                    breakPoints.push(idealBreakPoint);
+                    currentOffset = idealBreakPoint;
                 }
             }
             
