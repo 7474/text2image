@@ -91,6 +91,7 @@
         
         .preview-container img {
             max-width: 100%;
+            max-height: 800px;
             display: block;
             margin-bottom: 10px;
         }
@@ -648,13 +649,14 @@ console.log('Hello World!');
                         offscreenContainer.style.position = 'fixed';
                         offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
                         offscreenPreview.style.position = 'relative';
+                        offscreenPreview.style.willChange = 'transform';  // Hint for optimization
                         
                         await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
                         
                         // Capture each section
                         for (let i = 0; i < numImages; i++) {
                             const offsetY = i * contentHeight;
-                            offscreenPreview.style.top = `-${offsetY}px`;
+                            offscreenPreview.style.transform = `translateY(-${offsetY}px)`;
                             
                             await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
                             
@@ -677,12 +679,15 @@ console.log('Hello World!');
                             
                             renderedDataUris.push(canvas.toDataURL('image/png'));
                             
-                            // Update button text to show progress
-                            copyBtn.textContent = `🔄 画像を生成中... (${i + 1}/${numImages})`;
+                            // Update button text to show progress every 2 images or on last
+                            if (i % 2 === 1 || i === numImages - 1) {
+                                copyBtn.textContent = `🔄 画像を生成中... (${i + 1}/${numImages})`;
+                            }
                         }
                         
-                        // Reset position
-                        offscreenPreview.style.top = '';
+                        // Reset transform
+                        offscreenPreview.style.transform = '';
+                        offscreenPreview.style.willChange = '';
                         offscreenPreview.style.position = '';
                     }
                 } else {
