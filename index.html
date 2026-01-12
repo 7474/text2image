@@ -87,15 +87,27 @@
             min-height: 400px;
             overflow: auto;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         
         .preview-container img {
             max-width: 100%;
-            max-height: 100%;
+            max-height: 800px;
             display: block;
+            margin-bottom: 10px;
+        }
+        
+        .preview-container img:last-child {
+            margin-bottom: 0;
+        }
+        
+        .image-count-info {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            text-align: center;
         }
 
         .viewport-selector {
@@ -392,7 +404,7 @@ console.log('Hello World!');
 日本語、中文、한글"></textarea>
                 <div class="button-group">
                     <button id="render-btn">🎨 レンダリング</button>
-                    <button id="copy-btn" disabled>📋 画像をコピー</button>
+                    <button id="copy-btn" disabled>📋 画像をコピー/ダウンロード</button>
                 </div>
                 <div id="status" class="status"></div>
             </div>
@@ -412,6 +424,7 @@ console.log('Hello World!');
                     </select>
                 </div>
                 <div class="viewport-info" id="viewport-info">選択したサイズで画像が生成されます</div>
+                <div class="image-count-info" id="image-count-info" style="display: none;"></div>
                 <div class="preview-container">
                     <div id="preview">
                         <p>左側のテキストエリアにMarkdownを入力して、「レンダリング」ボタンをクリックしてください。</p>
@@ -451,8 +464,9 @@ console.log('Hello World!');
         const statusDiv = document.getElementById('status');
         const viewportSizeSelect = document.getElementById('viewport-size');
         const viewportInfo = document.getElementById('viewport-info');
+        const imageCountInfo = document.getElementById('image-count-info');
 
-        let renderedDataUri = null;
+        let renderedDataUris = []; // Array to store multiple images
         let hasRenderedContent = false;
         
         // Layout timing constants for viewport optimization
@@ -461,6 +475,7 @@ console.log('Hello World!');
         const LAYOUT_MEASURE_DELAY_MS = 50;  // Time to wait for natural size measurement
         const LAYOUT_SETTLE_DELAY_MS = 100;  // Time to wait for layout to settle after style changes
         const DEFAULT_PREVIEW_PADDING = '20px';  // Default padding for off-screen preview
+        const PROGRESS_UPDATE_FREQUENCY = 2;  // Update progress indicator every N images
 
         // Get selected viewport dimensions
         function getViewportDimensions() {
@@ -580,7 +595,8 @@ console.log('Hello World!');
                 // Make container visible for html2canvas to capture properly
                 offscreenContainer.style.opacity = '1';
                 
-                let canvas;
+                renderedDataUris = []; // Reset array
+                
                 if (viewportDims) {
                     // Set fixed width to viewport width to ensure content wraps at the correct width
                     offscreenPreview.style.width = viewportDims.width + 'px';
@@ -589,47 +605,92 @@ console.log('Hello World!');
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_MEASURE_DELAY_MS));
                     
                     const naturalHeight = offscreenPreview.scrollHeight;
+                    const contentHeight = viewportDims.height;
                     
-                    // Apply viewport dimensions to container
-                    offscreenContainer.style.width = viewportDims.width + 'px';
-                    offscreenContainer.style.height = viewportDims.height + 'px';
-                    offscreenContainer.style.overflow = 'hidden';
-                    offscreenContainer.style.display = 'flex';
-                    offscreenContainer.style.justifyContent = 'center';
+                    // Calculate how many images we need
+                    const numImages = Math.ceil(naturalHeight / contentHeight);
                     
-                    // If content fits, center it; if too tall, show from top
-                    if (naturalHeight <= viewportDims.height) {
+                    if (numImages === 1) {
+                        // Content fits in one image
+                        offscreenContainer.style.width = viewportDims.width + 'px';
+                        offscreenContainer.style.height = viewportDims.height + 'px';
+                        offscreenContainer.style.overflow = 'hidden';
+                        offscreenContainer.style.display = 'flex';
                         offscreenContainer.style.alignItems = 'center';
+                        offscreenContainer.style.justifyContent = 'center';
                         offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
+                        
+                        await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
+                        
+                        const canvas = await html2canvas(offscreenContainer, {
+                            backgroundColor: '#ffffff',
+                            scale: 2,
+                            logging: false,
+                            useCORS: true,
+                            allowTaint: true,
+                            width: viewportDims.width,
+                            height: viewportDims.height,
+                            onclone: (clonedDoc) => {
+                                const clonedPreview = clonedDoc.getElementById('offscreen-preview');
+                                if (clonedPreview) {
+                                    clonedPreview.style.transform = 'none';
+                                    clonedPreview.style.transformOrigin = '';
+                                }
+                            }
+                        });
+                        
+                        renderedDataUris.push(canvas.toDataURL('image/png'));
                     } else {
-                        offscreenContainer.style.alignItems = 'flex-start';
+                        // Content needs multiple images
+                        // Set up container for scrolling through content
+                        offscreenContainer.style.width = viewportDims.width + 'px';
+                        offscreenContainer.style.height = viewportDims.height + 'px';
+                        offscreenContainer.style.overflow = 'hidden';
+                        offscreenContainer.style.display = 'block';
+                        offscreenContainer.style.position = 'fixed';
                         offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
-                    }
-                    
-                    // Wait for layout to settle
-                    await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
-                    
-                    // Create canvas by capturing the container
-                    // Use onclone to ensure any CSS transforms are reset
-                    canvas = await html2canvas(offscreenContainer, {
-                        backgroundColor: '#ffffff',
-                        scale: 2, // Higher quality
-                        logging: false,
-                        useCORS: true,
-                        allowTaint: true,
-                        width: viewportDims.width,
-                        height: viewportDims.height,
-                        onclone: (clonedDoc) => {
-                            const clonedPreview = clonedDoc.getElementById('offscreen-preview');
-                            if (clonedPreview) {
-                                // Reset any transforms that might interfere with rendering
-                                clonedPreview.style.transform = 'none';
-                                clonedPreview.style.transformOrigin = '';
-                            } else {
-                                console.warn('Warning: offscreen-preview element not found in cloned document');
+                        offscreenPreview.style.position = 'relative';
+                        offscreenPreview.style.willChange = 'transform';  // Hint for optimization
+                        
+                        await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
+                        
+                        // Capture each section
+                        for (let i = 0; i < numImages; i++) {
+                            const offsetY = i * contentHeight;
+                            offscreenPreview.style.transform = `translateY(-${offsetY}px)`;
+                            
+                            await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
+                            
+                            const canvas = await html2canvas(offscreenContainer, {
+                                backgroundColor: '#ffffff',
+                                scale: 2,
+                                logging: false,
+                                useCORS: true,
+                                allowTaint: true,
+                                width: viewportDims.width,
+                                height: viewportDims.height,
+                                onclone: (clonedDoc) => {
+                                    const clonedPreview = clonedDoc.getElementById('offscreen-preview');
+                                    if (clonedPreview) {
+                                        clonedPreview.style.transform = 'none';
+                                        clonedPreview.style.transformOrigin = '';
+                                    }
+                                }
+                            });
+                            
+                            renderedDataUris.push(canvas.toDataURL('image/png'));
+                            
+                            // Update button text to show progress periodically
+                            if (i % PROGRESS_UPDATE_FREQUENCY === 1 || i === numImages - 1) {
+                                copyBtn.textContent = `🔄 画像を生成中... (${i + 1}/${numImages})`;
                             }
                         }
-                    });
+                        
+                        // Reset transform
+                        offscreenPreview.style.transform = '';
+                        offscreenPreview.style.willChange = '';
+                        offscreenPreview.style.position = '';
+                    }
                 } else {
                     // Auto mode - use content size
                     offscreenPreview.style.width = '';
@@ -643,16 +704,17 @@ console.log('Hello World!');
                     offscreenContainer.style.alignItems = '';
                     offscreenContainer.style.justifyContent = '';
                     
-                    // Wait for layout to settle
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
                     
-                    canvas = await html2canvas(offscreenPreview, {
+                    const canvas = await html2canvas(offscreenPreview, {
                         backgroundColor: '#ffffff',
-                        scale: 2, // Higher quality
+                        scale: 2,
                         logging: false,
                         useCORS: true,
                         allowTaint: true
                     });
+                    
+                    renderedDataUris.push(canvas.toDataURL('image/png'));
                 }
                 
                 // Restore original styles
@@ -668,28 +730,35 @@ console.log('Hello World!');
                 offscreenContainer.style.justifyContent = originalContainerStyle.justifyContent;
                 offscreenContainer.style.opacity = originalContainerStyle.opacity;
                 
-                // Convert canvas to data URI
-                renderedDataUri = canvas.toDataURL('image/png');
-                
-                // Display data URI in preview as img element (using DOM methods for security)
-                const img = document.createElement('img');
-                img.src = renderedDataUri;
-                img.alt = 'Rendered markdown preview';
+                // Display all images in preview
                 previewDiv.innerHTML = '';
-                previewDiv.appendChild(img);
+                renderedDataUris.forEach((dataUri, index) => {
+                    const img = document.createElement('img');
+                    img.src = dataUri;
+                    img.alt = `Rendered markdown preview ${index + 1}`;
+                    previewDiv.appendChild(img);
+                });
+                
+                // Show image count info
+                if (renderedDataUris.length > 1) {
+                    imageCountInfo.textContent = `📸 ${renderedDataUris.length}枚の画像が生成されました（長文を自動分割）`;
+                    imageCountInfo.style.display = 'block';
+                } else {
+                    imageCountInfo.style.display = 'none';
+                }
             } catch (error) {
                 console.error('Canvas generation error:', error);
                 showStatus('❌ 画像生成エラー: ' + error.message, false);
             } finally {
                 // Always restore button state, regardless of success or failure
                 copyBtn.disabled = false;
-                copyBtn.textContent = '📋 画像をコピー';
+                copyBtn.textContent = '📋 画像をコピー/ダウンロード';
             }
         }
 
         // Copy canvas to clipboard
         async function copyToClipboard() {
-            if (!renderedDataUri) {
+            if (!renderedDataUris || renderedDataUris.length === 0) {
                 showStatus('❌ 先にレンダリングを実行してください', false);
                 return;
             }
@@ -698,44 +767,64 @@ console.log('Hello World!');
                 copyBtn.disabled = true;
                 copyBtn.textContent = '📋 コピー中...';
 
-                // Convert data URI to blob efficiently
-                const base64 = renderedDataUri.split(',')[1];
-                const byteString = atob(base64);
-                const arrayBuffer = new ArrayBuffer(byteString.length);
-                const uint8Array = new Uint8Array(arrayBuffer);
-                for (let i = 0; i < byteString.length; i++) {
-                    uint8Array[i] = byteString.charCodeAt(i);
-                }
-                const blob = new Blob([arrayBuffer], { type: 'image/png' });
+                if (renderedDataUris.length === 1) {
+                    // Single image - copy to clipboard
+                    const base64 = renderedDataUris[0].split(',')[1];
+                    const byteString = atob(base64);
+                    const arrayBuffer = new ArrayBuffer(byteString.length);
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    for (let i = 0; i < byteString.length; i++) {
+                        uint8Array[i] = byteString.charCodeAt(i);
+                    }
+                    const blob = new Blob([arrayBuffer], { type: 'image/png' });
 
-                try {
-                    // Copy to clipboard using Clipboard API
-                    await navigator.clipboard.write([
-                        new ClipboardItem({
-                            'image/png': blob
-                        })
-                    ]);
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        
+                        showStatus('✅ 画像をクリップボードにコピーしました！', true);
+                    } catch (err) {
+                        console.error('Clipboard API error:', err);
+                        
+                        // Fallback: download image if clipboard API fails
+                        const a = document.createElement('a');
+                        a.href = renderedDataUris[0];
+                        a.download = 'rendered-markdown.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        
+                        showStatus('⚠️ クリップボードへのコピーに失敗しました。画像をダウンロードしました。', false);
+                    }
+                } else {
+                    // Multiple images - download all as separate files with delays
+                    for (let i = 0; i < renderedDataUris.length; i++) {
+                        const dataUri = renderedDataUris[i];
+                        
+                        // Add small delay between downloads to avoid browser blocking
+                        if (i > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                        
+                        const a = document.createElement('a');
+                        a.href = dataUri;
+                        a.download = `rendered-markdown-${i + 1}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
                     
-                    showStatus('✅ 画像をクリップボードにコピーしました！', true);
-                } catch (err) {
-                    console.error('Clipboard API error:', err);
-                    
-                    // Fallback: download image if clipboard API fails
-                    const a = document.createElement('a');
-                    a.href = renderedDataUri;
-                    a.download = 'rendered-markdown.png';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    showStatus('⚠️ クリップボードへのコピーに失敗しました。画像をダウンロードしました。', false);
+                    showStatus(`✅ ${renderedDataUris.length}枚の画像をダウンロードしました！`, true);
                 }
             } catch (error) {
                 console.error('Copy error:', error);
                 showStatus('❌ コピーエラー: ' + error.message, false);
             } finally {
                 copyBtn.disabled = false;
-                copyBtn.textContent = '📋 画像をコピー';
+                copyBtn.textContent = '📋 画像をコピー/ダウンロード';
             }
         }
 
@@ -755,7 +844,7 @@ console.log('Hello World!');
             }
             
             // Re-generate canvas if already rendered
-            if (renderedDataUri && hasRenderedContent) {
+            if (renderedDataUris.length > 0 && hasRenderedContent) {
                 generateCanvas();
             }
         });
