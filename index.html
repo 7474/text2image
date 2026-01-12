@@ -698,9 +698,15 @@ console.log('Hello World!');
                 copyBtn.disabled = true;
                 copyBtn.textContent = '📋 コピー中...';
 
-                // Convert data URI to blob
-                const response = await fetch(renderedDataUri);
-                const blob = await response.blob();
+                // Convert data URI to blob efficiently
+                const base64 = renderedDataUri.split(',')[1];
+                const byteString = atob(base64);
+                const arrayBuffer = new ArrayBuffer(byteString.length);
+                const uint8Array = new Uint8Array(arrayBuffer);
+                for (let i = 0; i < byteString.length; i++) {
+                    uint8Array[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([arrayBuffer], { type: 'image/png' });
 
                 try {
                     // Copy to clipboard using Clipboard API
