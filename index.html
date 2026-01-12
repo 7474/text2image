@@ -144,11 +144,12 @@
         /* Hidden rendering container for off-screen rendering */
         #offscreen-container {
             position: fixed;
-            top: -10000px;
-            left: -10000px;
-            visibility: hidden;
+            top: 0;
+            left: 0;
+            opacity: 0;
             pointer-events: none;
             background: white;
+            z-index: -9999;
         }
         
         #offscreen-preview {
@@ -562,9 +563,7 @@ console.log('Hello World!');
                     width: offscreenPreview.style.width,
                     height: offscreenPreview.style.height,
                     overflow: offscreenPreview.style.overflow,
-                    padding: offscreenPreview.style.padding,
-                    transform: offscreenPreview.style.transform,
-                    transformOrigin: offscreenPreview.style.transformOrigin
+                    padding: offscreenPreview.style.padding
                 };
                 const originalContainerStyle = {
                     width: offscreenContainer.style.width,
@@ -583,41 +582,30 @@ console.log('Hello World!');
                     offscreenPreview.style.overflow = '';
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_MEASURE_DELAY_MS));
                     
-                    const naturalWidth = viewportDims.width;
                     const naturalHeight = offscreenPreview.scrollHeight;
-                    
-                    // Calculate if vertical scaling is needed (width is already fixed)
-                    const scaleY = viewportDims.height / naturalHeight;
-                    const scale = Math.min(scaleY, 1); // Don't scale up, only down
                     
                     // Apply viewport dimensions to container
                     offscreenContainer.style.width = viewportDims.width + 'px';
                     offscreenContainer.style.height = viewportDims.height + 'px';
                     offscreenContainer.style.overflow = 'hidden';
                     offscreenContainer.style.display = 'flex';
-                    offscreenContainer.style.alignItems = 'flex-start';
-                    offscreenContainer.style.justifyContent = 'flex-start';
+                    offscreenContainer.style.alignItems = 'center';
+                    offscreenContainer.style.justifyContent = 'center';
                     
-                    if (scale < 1) {
-                        // Content height is too large, scale it down
-                        offscreenPreview.style.width = naturalWidth + 'px';
-                        offscreenPreview.style.height = naturalHeight + 'px';
-                        offscreenPreview.style.transform = `scale(${scale})`;
-                        offscreenPreview.style.transformOrigin = 'top left';
-                        offscreenPreview.style.overflow = 'hidden';
+                    // If content fits, center it; if too tall, show from top
+                    if (naturalHeight <= viewportDims.height) {
+                        offscreenContainer.style.alignItems = 'center';
+                        offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
                     } else {
-                        // Content fits vertically, add padding to center if smaller
-                        const paddingTop = Math.max(0, (viewportDims.height - naturalHeight) / 2);
-                        offscreenPreview.style.padding = `${paddingTop}px 0px ${paddingTop}px 0px`;
-                        offscreenPreview.style.width = viewportDims.width + 'px';
-                        offscreenPreview.style.height = viewportDims.height + 'px';
-                        offscreenPreview.style.overflow = 'hidden';
+                        offscreenContainer.style.alignItems = 'flex-start';
+                        offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
                     }
                     
                     // Wait for layout to settle
                     await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
                     
-                    // Create canvas with viewport dimensions
+                    // Create canvas by capturing the container
+                    // Use onclone to ensure any CSS transforms are reset
                     canvas = await html2canvas(offscreenContainer, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
@@ -625,7 +613,15 @@ console.log('Hello World!');
                         useCORS: true,
                         allowTaint: true,
                         width: viewportDims.width,
-                        height: viewportDims.height
+                        height: viewportDims.height,
+                        onclone: (clonedDoc) => {
+                            const clonedPreview = clonedDoc.getElementById('offscreen-preview');
+                            if (clonedPreview) {
+                                // Reset any transforms that might interfere with rendering
+                                clonedPreview.style.transform = 'none';
+                                clonedPreview.style.transformOrigin = '';
+                            }
+                        }
                     });
                 } else {
                     // Auto mode - use content size
@@ -633,8 +629,6 @@ console.log('Hello World!');
                     offscreenPreview.style.height = '';
                     offscreenPreview.style.overflow = '';
                     offscreenPreview.style.padding = DEFAULT_PREVIEW_PADDING;
-                    offscreenPreview.style.transform = '';
-                    offscreenPreview.style.transformOrigin = '';
                     offscreenContainer.style.width = '';
                     offscreenContainer.style.height = '';
                     offscreenContainer.style.overflow = '';
@@ -659,8 +653,6 @@ console.log('Hello World!');
                 offscreenPreview.style.height = originalStyle.height;
                 offscreenPreview.style.overflow = originalStyle.overflow;
                 offscreenPreview.style.padding = originalStyle.padding;
-                offscreenPreview.style.transform = originalStyle.transform;
-                offscreenPreview.style.transformOrigin = originalStyle.transformOrigin;
                 offscreenContainer.style.width = originalContainerStyle.width;
                 offscreenContainer.style.height = originalContainerStyle.height;
                 offscreenContainer.style.overflow = originalContainerStyle.overflow;
