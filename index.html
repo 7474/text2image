@@ -127,6 +127,8 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            /* Ensure padding is included in width/height calculations for viewport optimization */
+            box-sizing: border-box;
         }
 
         /* GitHub Flavored Markdown Styles */
@@ -411,6 +413,12 @@ console.log('Hello World!');
 
         let renderedCanvas = null;
         let hasRenderedContent = false;
+        
+        // Layout timing constants for viewport optimization
+        // These delays ensure the browser has time to calculate and apply layout changes
+        // before capturing the canvas
+        const LAYOUT_MEASURE_DELAY_MS = 50;  // Time to wait for natural size measurement
+        const LAYOUT_SETTLE_DELAY_MS = 100;  // Time to wait for layout to settle after style changes
 
         // Get selected viewport dimensions
         function getViewportDimensions() {
@@ -502,16 +510,80 @@ console.log('Hello World!');
 
         // Generate canvas from preview
         async function generateCanvas() {
+            copyBtn.disabled = true;
+            copyBtn.textContent = '🔄 画像を生成中...';
+            
             try {
-                copyBtn.disabled = true;
-                copyBtn.textContent = '🔄 画像を生成中...';
-                
                 const viewportDims = getViewportDimensions();
+                const previewContainer = previewDiv.parentElement;
+                
+                // Store original styles
+                const originalPreviewStyle = {
+                    width: previewDiv.style.width,
+                    height: previewDiv.style.height,
+                    overflow: previewDiv.style.overflow,
+                    padding: previewDiv.style.padding,
+                    transform: previewDiv.style.transform,
+                    transformOrigin: previewDiv.style.transformOrigin
+                };
+                const originalContainerStyle = {
+                    width: previewContainer.style.width,
+                    height: previewContainer.style.height,
+                    minHeight: previewContainer.style.minHeight,
+                    overflow: previewContainer.style.overflow,
+                    display: previewContainer.style.display,
+                    alignItems: previewContainer.style.alignItems,
+                    justifyContent: previewContainer.style.justifyContent
+                };
                 
                 let canvas;
                 if (viewportDims) {
-                    // Create canvas with specific dimensions
-                    canvas = await html2canvas(previewDiv, {
+                    // First, measure natural content size
+                    previewDiv.style.width = '';
+                    previewDiv.style.height = '';
+                    previewDiv.style.overflow = '';
+                    await new Promise(resolve => setTimeout(resolve, LAYOUT_MEASURE_DELAY_MS));
+                    
+                    const naturalWidth = previewDiv.scrollWidth;
+                    const naturalHeight = previewDiv.scrollHeight;
+                    
+                    // Calculate if scaling is needed
+                    const scaleX = viewportDims.width / naturalWidth;
+                    const scaleY = viewportDims.height / naturalHeight;
+                    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+                    
+                    // Apply viewport dimensions to container
+                    previewContainer.style.width = viewportDims.width + 'px';
+                    previewContainer.style.height = viewportDims.height + 'px';
+                    previewContainer.style.minHeight = 'auto';
+                    previewContainer.style.overflow = 'hidden';
+                    previewContainer.style.display = 'flex';
+                    previewContainer.style.alignItems = 'flex-start';
+                    previewContainer.style.justifyContent = 'flex-start';
+                    
+                    if (scale < 1) {
+                        // Content is too large, scale it down
+                        previewDiv.style.width = naturalWidth + 'px';
+                        previewDiv.style.height = naturalHeight + 'px';
+                        previewDiv.style.transform = `scale(${scale})`;
+                        previewDiv.style.transformOrigin = 'top left';
+                        previewDiv.style.overflow = 'hidden';
+                    } else {
+                        // Content fits, add padding to center if smaller
+                        const paddingTop = Math.max(0, (viewportDims.height - naturalHeight) / 2);
+                        const paddingLeft = Math.max(0, (viewportDims.width - naturalWidth) / 2);
+                        // Use 4-value syntax for explicit centering: top right bottom left
+                        previewDiv.style.padding = `${paddingTop}px ${paddingLeft}px ${paddingTop}px ${paddingLeft}px`;
+                        previewDiv.style.width = viewportDims.width + 'px';
+                        previewDiv.style.height = viewportDims.height + 'px';
+                        previewDiv.style.overflow = 'hidden';
+                    }
+                    
+                    // Wait for layout to settle
+                    await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
+                    
+                    // Create canvas with viewport dimensions
+                    canvas = await html2canvas(previewContainer, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
                         logging: false,
@@ -521,7 +593,24 @@ console.log('Hello World!');
                         height: viewportDims.height
                     });
                 } else {
-                    // Auto mode - use content size
+                    // Auto mode - use content size, restore natural sizing
+                    previewDiv.style.width = '';
+                    previewDiv.style.height = '';
+                    previewDiv.style.overflow = '';
+                    previewDiv.style.padding = '';
+                    previewDiv.style.transform = '';
+                    previewDiv.style.transformOrigin = '';
+                    previewContainer.style.width = '';
+                    previewContainer.style.height = '';
+                    previewContainer.style.minHeight = '';
+                    previewContainer.style.overflow = '';
+                    previewContainer.style.display = '';
+                    previewContainer.style.alignItems = '';
+                    previewContainer.style.justifyContent = '';
+                    
+                    // Wait for layout to settle
+                    await new Promise(resolve => setTimeout(resolve, LAYOUT_SETTLE_DELAY_MS));
+                    
                     canvas = await html2canvas(previewDiv, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
@@ -531,12 +620,28 @@ console.log('Hello World!');
                     });
                 }
                 
+                // Restore original styles
+                previewDiv.style.width = originalPreviewStyle.width;
+                previewDiv.style.height = originalPreviewStyle.height;
+                previewDiv.style.overflow = originalPreviewStyle.overflow;
+                previewDiv.style.padding = originalPreviewStyle.padding;
+                previewDiv.style.transform = originalPreviewStyle.transform;
+                previewDiv.style.transformOrigin = originalPreviewStyle.transformOrigin;
+                previewContainer.style.width = originalContainerStyle.width;
+                previewContainer.style.height = originalContainerStyle.height;
+                previewContainer.style.minHeight = originalContainerStyle.minHeight;
+                previewContainer.style.overflow = originalContainerStyle.overflow;
+                previewContainer.style.display = originalContainerStyle.display;
+                previewContainer.style.alignItems = originalContainerStyle.alignItems;
+                previewContainer.style.justifyContent = originalContainerStyle.justifyContent;
+                
                 renderedCanvas = canvas;
-                copyBtn.disabled = false;
-                copyBtn.textContent = '📋 画像をコピー';
             } catch (error) {
                 console.error('Canvas generation error:', error);
                 showStatus('❌ 画像生成エラー: ' + error.message, false);
+            } finally {
+                // Always restore button state, regardless of success or failure
+                copyBtn.disabled = false;
                 copyBtn.textContent = '📋 画像をコピー';
             }
         }
