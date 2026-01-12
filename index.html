@@ -375,22 +375,20 @@ console.log('Hello World!');
         // Normalize emphasis markers for multibyte characters
         function normalizeMultibyteEmphasis(text) {
             // Convert underscore-based emphasis to asterisk-based emphasis when content
-            // contains multibyte characters. This ensures consistent rendering since
-            // asterisks work more reliably with multibyte text in GFM.
+            // contains or is adjacent to multibyte characters. This ensures consistent
+            // rendering since asterisks work more reliably with multibyte text in GFM.
             
-            // Convert __ to ** when content contains multibyte characters
-            text = text.replace(/__([^_\n]+[\u0080-\uFFFF][^_\n]*)__/g, '**$1**');
-            text = text.replace(/__([^_\n]*[\u0080-\uFFFF][^_\n]+)__/g, '**$1**');
-            
-            // Convert __ to ** when adjacent to multibyte characters
+            // Convert __ to ** when:
+            // 1. Content contains multibyte characters: __あいう__ or __mix世界ed__
+            text = text.replace(/__([^_\n]*[\u0080-\uFFFF][^_\n]*)__/g, '**$1**');
+            // 2. Adjacent to multibyte characters: あ__text__ or __text__あ
             text = text.replace(/([\u0080-\uFFFF])__([^_\n]+)__/g, '$1**$2**');
             text = text.replace(/__([^_\n]+)__([\u0080-\uFFFF])/g, '**$1**$2');
             
-            // Convert single _ to * when content contains multibyte characters
-            text = text.replace(/_([^_\n]+[\u0080-\uFFFF][^_\n]*)_/g, '*$1*');
-            text = text.replace(/_([^_\n]*[\u0080-\uFFFF][^_\n]+)_/g, '*$1*');
-            
-            // Convert _ to * when adjacent to multibyte characters
+            // Convert _ to * when:
+            // 1. Content contains multibyte characters: _あいう_ or _mix世界ed_
+            text = text.replace(/_([^_\n]*[\u0080-\uFFFF][^_\n]*)_/g, '*$1*');
+            // 2. Adjacent to multibyte characters: あ_text_ or _text_あ
             text = text.replace(/([\u0080-\uFFFF])_([^_\n]+)_/g, '$1*$2*');
             text = text.replace(/_([^_\n]+)_([\u0080-\uFFFF])/g, '*$1*$2');
             
