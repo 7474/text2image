@@ -1,4 +1,4 @@
-# texr2image
+# text2image
 
 任意のテキストを入力し、GitHub Flavored Markdown として画像にレンダリングして、クリップボードに転送する Web ページです。
 
@@ -12,7 +12,7 @@
 
 ## 使い方
 
-1. [GitHub Pages でホストされているページ](https://7474.github.io/texr2image/) にアクセス
+1. [GitHub Pages でホストされているページ](https://7474.github.io/text2image/) にアクセス
 2. 左側のテキストエリアに Markdown テキストを入力
 3. 「🎨 レンダリング」ボタンをクリックしてプレビューを表示
 4. 「📋 画像をコピー」ボタンをクリックして画像をクリップボードにコピー
