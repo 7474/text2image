@@ -134,7 +134,7 @@
 
         #preview {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            font-size: 9pt;
+            font-size: 12pt;
             line-height: 1.6;
             color: #333;
             /* Ensure padding is included in width/height calculations for viewport optimization */
@@ -153,7 +153,7 @@
         
         #offscreen-preview {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            font-size: 9pt;
+            font-size: 12pt;
             line-height: 1.6;
             color: #333;
             box-sizing: border-box;
@@ -401,7 +401,9 @@ console.log('Hello World!');
                 <div class="viewport-selector">
                     <label for="viewport-size">📐 画像サイズ:</label>
                     <select id="viewport-size">
-                        <option value="1200x675">Twitter 16:9 (1200x675px) - 推奨</option>
+                        <option value="1080x1920">スマホ縦持ち FHD (1080x1920px) - 推奨</option>
+                        <option value="720x1280">スマホ縦持ち HD (720x1280px)</option>
+                        <option value="1200x675">Twitter 16:9 (1200x675px)</option>
                         <option value="1200x1200">Twitter Square (1200x1200px)</option>
                         <option value="1200x628">Twitter Card (1200x628px)</option>
                         <option value="600x335">Small 16:9 (600x335px)</option>
@@ -748,6 +750,8 @@ console.log('Hello World!');
             const selectedSize = viewportSizeSelect.value;
             if (selectedSize === 'auto') {
                 viewportInfo.textContent = 'コンテンツのサイズに合わせて画像が生成されます';
+            } else if (selectedSize === '1080x1920' || selectedSize === '720x1280') {
+                viewportInfo.textContent = `${selectedSize} のサイズで画像が生成されます (スマートフォン最適化)`;
             } else {
                 viewportInfo.textContent = `${selectedSize} のサイズで画像が生成されます (Twitter/X 最適化)`;
             }
