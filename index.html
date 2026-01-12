@@ -507,10 +507,38 @@ console.log('Hello World!');
                 copyBtn.textContent = '🔄 画像を生成中...';
                 
                 const viewportDims = getViewportDimensions();
+                const previewContainer = previewDiv.parentElement;
+                
+                // Store original styles
+                const originalPreviewStyle = {
+                    width: previewDiv.style.width,
+                    height: previewDiv.style.height,
+                    overflow: previewDiv.style.overflow
+                };
+                const originalContainerStyle = {
+                    width: previewContainer.style.width,
+                    height: previewContainer.style.height,
+                    minHeight: previewContainer.style.minHeight,
+                    overflow: previewContainer.style.overflow
+                };
                 
                 let canvas;
                 if (viewportDims) {
-                    // Create canvas with specific dimensions
+                    // Apply viewport dimensions to preview div for rendering
+                    previewDiv.style.width = viewportDims.width + 'px';
+                    previewDiv.style.height = viewportDims.height + 'px';
+                    previewDiv.style.overflow = 'hidden';
+                    
+                    // Also adjust container to match
+                    previewContainer.style.width = viewportDims.width + 'px';
+                    previewContainer.style.height = viewportDims.height + 'px';
+                    previewContainer.style.minHeight = 'auto';
+                    previewContainer.style.overflow = 'hidden';
+                    
+                    // Wait for layout to settle
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // Create canvas with viewport dimensions
                     canvas = await html2canvas(previewDiv, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
@@ -521,7 +549,18 @@ console.log('Hello World!');
                         height: viewportDims.height
                     });
                 } else {
-                    // Auto mode - use content size
+                    // Auto mode - use content size, restore natural sizing
+                    previewDiv.style.width = '';
+                    previewDiv.style.height = '';
+                    previewDiv.style.overflow = '';
+                    previewContainer.style.width = '';
+                    previewContainer.style.height = '';
+                    previewContainer.style.minHeight = '';
+                    previewContainer.style.overflow = '';
+                    
+                    // Wait for layout to settle
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
                     canvas = await html2canvas(previewDiv, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
@@ -531,12 +570,22 @@ console.log('Hello World!');
                     });
                 }
                 
+                // Restore original styles
+                previewDiv.style.width = originalPreviewStyle.width;
+                previewDiv.style.height = originalPreviewStyle.height;
+                previewDiv.style.overflow = originalPreviewStyle.overflow;
+                previewContainer.style.width = originalContainerStyle.width;
+                previewContainer.style.height = originalContainerStyle.height;
+                previewContainer.style.minHeight = originalContainerStyle.minHeight;
+                previewContainer.style.overflow = originalContainerStyle.overflow;
+                
                 renderedCanvas = canvas;
                 copyBtn.disabled = false;
                 copyBtn.textContent = '📋 画像をコピー';
             } catch (error) {
                 console.error('Canvas generation error:', error);
                 showStatus('❌ 画像生成エラー: ' + error.message, false);
+                copyBtn.disabled = false;
                 copyBtn.textContent = '📋 画像をコピー';
             }
         }
