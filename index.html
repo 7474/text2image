@@ -127,6 +127,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            box-sizing: border-box;
         }
 
         /* GitHub Flavored Markdown Styles */
@@ -513,33 +514,68 @@ console.log('Hello World!');
                 const originalPreviewStyle = {
                     width: previewDiv.style.width,
                     height: previewDiv.style.height,
-                    overflow: previewDiv.style.overflow
+                    overflow: previewDiv.style.overflow,
+                    padding: previewDiv.style.padding,
+                    transform: previewDiv.style.transform,
+                    transformOrigin: previewDiv.style.transformOrigin
                 };
                 const originalContainerStyle = {
                     width: previewContainer.style.width,
                     height: previewContainer.style.height,
                     minHeight: previewContainer.style.minHeight,
-                    overflow: previewContainer.style.overflow
+                    overflow: previewContainer.style.overflow,
+                    display: previewContainer.style.display,
+                    alignItems: previewContainer.style.alignItems,
+                    justifyContent: previewContainer.style.justifyContent
                 };
                 
                 let canvas;
                 if (viewportDims) {
-                    // Apply viewport dimensions to preview div for rendering
-                    previewDiv.style.width = viewportDims.width + 'px';
-                    previewDiv.style.height = viewportDims.height + 'px';
-                    previewDiv.style.overflow = 'hidden';
+                    // First, measure natural content size
+                    previewDiv.style.width = '';
+                    previewDiv.style.height = '';
+                    previewDiv.style.overflow = '';
+                    await new Promise(resolve => setTimeout(resolve, 50));
                     
-                    // Also adjust container to match
+                    const naturalWidth = previewDiv.scrollWidth;
+                    const naturalHeight = previewDiv.scrollHeight;
+                    
+                    // Calculate if scaling is needed
+                    const scaleX = viewportDims.width / naturalWidth;
+                    const scaleY = viewportDims.height / naturalHeight;
+                    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+                    
+                    // Apply viewport dimensions to container
                     previewContainer.style.width = viewportDims.width + 'px';
                     previewContainer.style.height = viewportDims.height + 'px';
                     previewContainer.style.minHeight = 'auto';
                     previewContainer.style.overflow = 'hidden';
+                    previewContainer.style.display = 'flex';
+                    previewContainer.style.alignItems = 'flex-start';
+                    previewContainer.style.justifyContent = 'flex-start';
+                    
+                    if (scale < 1) {
+                        // Content is too large, scale it down
+                        previewDiv.style.width = naturalWidth + 'px';
+                        previewDiv.style.height = naturalHeight + 'px';
+                        previewDiv.style.transform = `scale(${scale})`;
+                        previewDiv.style.transformOrigin = 'top left';
+                        previewDiv.style.overflow = 'hidden';
+                    } else {
+                        // Content fits, add padding to center if smaller
+                        const paddingTop = Math.max(0, (viewportDims.height - naturalHeight) / 2);
+                        const paddingLeft = Math.max(0, (viewportDims.width - naturalWidth) / 2);
+                        previewDiv.style.padding = `${paddingTop}px ${paddingLeft}px`;
+                        previewDiv.style.width = viewportDims.width + 'px';
+                        previewDiv.style.height = viewportDims.height + 'px';
+                        previewDiv.style.overflow = 'hidden';
+                    }
                     
                     // Wait for layout to settle
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
                     // Create canvas with viewport dimensions
-                    canvas = await html2canvas(previewDiv, {
+                    canvas = await html2canvas(previewContainer, {
                         backgroundColor: '#ffffff',
                         scale: 2, // Higher quality
                         logging: false,
@@ -553,10 +589,16 @@ console.log('Hello World!');
                     previewDiv.style.width = '';
                     previewDiv.style.height = '';
                     previewDiv.style.overflow = '';
+                    previewDiv.style.padding = '';
+                    previewDiv.style.transform = '';
+                    previewDiv.style.transformOrigin = '';
                     previewContainer.style.width = '';
                     previewContainer.style.height = '';
                     previewContainer.style.minHeight = '';
                     previewContainer.style.overflow = '';
+                    previewContainer.style.display = '';
+                    previewContainer.style.alignItems = '';
+                    previewContainer.style.justifyContent = '';
                     
                     // Wait for layout to settle
                     await new Promise(resolve => setTimeout(resolve, 100));
@@ -574,10 +616,16 @@ console.log('Hello World!');
                 previewDiv.style.width = originalPreviewStyle.width;
                 previewDiv.style.height = originalPreviewStyle.height;
                 previewDiv.style.overflow = originalPreviewStyle.overflow;
+                previewDiv.style.padding = originalPreviewStyle.padding;
+                previewDiv.style.transform = originalPreviewStyle.transform;
+                previewDiv.style.transformOrigin = originalPreviewStyle.transformOrigin;
                 previewContainer.style.width = originalContainerStyle.width;
                 previewContainer.style.height = originalContainerStyle.height;
                 previewContainer.style.minHeight = originalContainerStyle.minHeight;
                 previewContainer.style.overflow = originalContainerStyle.overflow;
+                previewContainer.style.display = originalContainerStyle.display;
+                previewContainer.style.alignItems = originalContainerStyle.alignItems;
+                previewContainer.style.justifyContent = originalContainerStyle.justifyContent;
                 
                 renderedCanvas = canvas;
                 copyBtn.disabled = false;
