@@ -476,6 +476,10 @@ console.log('Hello World!');
         const LAYOUT_SETTLE_DELAY_MS = 100;  // Time to wait for layout to settle after style changes
         const DEFAULT_PREVIEW_PADDING = '20px';  // Default padding for off-screen preview
         const PROGRESS_UPDATE_FREQUENCY = 2;  // Update progress indicator every N images
+        
+        // Break point algorithm thresholds for maximizing content per image
+        const MIN_CONTENT_RATIO = 0.5;  // Minimum content ratio to break before an element (50% of target height)
+        const MAX_CONTENT_RATIO = 1.5;  // Maximum content ratio to include entire element (150% of target height)
 
         // Get selected viewport dimensions
         function getViewportDimensions() {
@@ -607,11 +611,11 @@ console.log('Hello World!');
                         const contentBeforeElement = childTop - currentOffset;
                         const contentIncludingElement = childBottom - currentOffset;
                         
-                        // If breaking before gives us at least 50% of target height, do that
+                        // If breaking before gives us at least MIN_CONTENT_RATIO of target height, do that
                         // Otherwise, include the entire element even if it goes over
-                        if (contentBeforeElement >= targetHeight * 0.5) {
+                        if (contentBeforeElement >= targetHeight * MIN_CONTENT_RATIO) {
                             breakBeforeElement = childTop;
-                        } else if (contentIncludingElement <= targetHeight * 1.5) {
+                        } else if (contentIncludingElement <= targetHeight * MAX_CONTENT_RATIO) {
                             // Include the entire element if it doesn't make image too large
                             breakBeforeElement = childBottom;
                         } else {
