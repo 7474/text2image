@@ -443,6 +443,11 @@ console.log('Hello World!');
     <script src="https://cdn.jsdelivr.net/npm/marked@17.0.1/lib/marked.umd.min.js"></script>
     <!-- html2canvas for converting HTML to image -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <!-- Extracted modules for testability -->
+    <script src="src/markdownProcessor.js"></script>
+    <script src="src/viewportManager.js"></script>
+    <script src="src/breakpointCalculator.js"></script>
 
     <script>
         // Configure marked.js for GitHub Flavored Markdown
@@ -478,32 +483,12 @@ console.log('Hello World!');
         const PROGRESS_UPDATE_FREQUENCY = 2;  // Update progress indicator every N images
         
         // Break point algorithm thresholds for maximizing content per image
-        const MIN_CONTENT_RATIO = 0.5;  // Minimum content ratio to break before an element (50% of target height)
-        const MAX_CONTENT_RATIO = 1.5;  // Maximum content ratio to include entire element (150% of target height)
+        const MIN_CONTENT_RATIO = window.MIN_CONTENT_RATIO || 0.5;
+        const MAX_CONTENT_RATIO = window.MAX_CONTENT_RATIO || 1.5;
 
-        // Get selected viewport dimensions
+        // Get selected viewport dimensions (now from viewportManager.js)
         function getViewportDimensions() {
-            const selectedSize = viewportSizeSelect.value;
-            
-            if (selectedSize === 'auto') {
-                return null; // Use actual content size
-            }
-            
-            // Validate format before parsing
-            if (!selectedSize.includes('x')) {
-                console.error('Invalid viewport size format:', selectedSize);
-                return null;
-            }
-            
-            const [width, height] = selectedSize.split('x').map(Number);
-            
-            // Validate parsed numbers
-            if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
-                console.error('Invalid viewport dimensions:', width, height);
-                return null;
-            }
-            
-            return { width, height };
+            return window.getViewportDimensions(viewportSizeSelect.value);
         }
 
         // Show status message
@@ -513,36 +498,6 @@ console.log('Hello World!');
             setTimeout(() => {
                 statusDiv.style.display = 'none';
             }, 3000);
-        }
-
-        // Normalize emphasis markers for multibyte characters
-        function normalizeMultibyteEmphasis(text) {
-            // Convert underscore-based emphasis to asterisk-based emphasis when content
-            // contains or is adjacent to multibyte characters. This ensures consistent
-            // rendering since asterisks work more reliably with multibyte text in GFM.
-            
-            // Convert __ to ** when:
-            // 1. Content contains multibyte characters: __あいう__ or __mix世界ed__
-            text = text.replace(/__([^_\n]*[\u0080-\uFFFF][^_\n]*)__/g, '**$1**');
-            // 2. Adjacent to multibyte characters: あ__text__ or __text__あ
-            text = text.replace(/([\u0080-\uFFFF])__([^_\n]+)__/g, '$1**$2**');
-            text = text.replace(/__([^_\n]+)__([\u0080-\uFFFF])/g, '**$1**$2');
-            
-            // Convert _ to * when:
-            // 1. Content contains multibyte characters: _あいう_ or _mix世界ed_
-            text = text.replace(/_([^_\n]*[\u0080-\uFFFF][^_\n]*)_/g, '*$1*');
-            // 2. Adjacent to multibyte characters: あ_text_ or _text_あ
-            text = text.replace(/([\u0080-\uFFFF])_([^_\n]+)_/g, '$1*$2*');
-            text = text.replace(/_([^_\n]+)_([\u0080-\uFFFF])/g, '*$1*$2');
-            
-            // Fix ** patterns adjacent to CJK punctuation marks like 「」『』、。！？
-            // These punctuation marks cause marked.js to not recognize ** as valid emphasis delimiters
-            // due to flanking delimiter rules. Convert directly to <strong> HTML tags to bypass parsing.
-            // Pattern: **<CJK-punct>content<CJK-punct>** where content doesn't contain * or newlines
-            // Unicode ranges: \u3000-\u303F (CJK Symbols and Punctuation), \uFF00-\uFFEF (Halfwidth and Fullwidth Forms)
-            text = text.replace(/\*\*([\u3000-\u303F\uFF00-\uFFEF][^\*\n]*[\u3000-\u303F\uFF00-\uFFEF])\*\*/g, '<strong>$1</strong>');
-            
-            return text;
         }
 
         // Render markdown
@@ -557,8 +512,8 @@ console.log('Hello World!');
             }
 
             try {
-                // Normalize emphasis markers for multibyte characters
-                const normalizedText = normalizeMultibyteEmphasis(text);
+                // Normalize emphasis markers for multibyte characters (from markdownProcessor.js)
+                const normalizedText = window.normalizeMultibyteEmphasis(text);
                 
                 // Parse markdown to HTML
                 const html = marked.parse(normalizedText);
@@ -578,73 +533,9 @@ console.log('Hello World!');
             }
         }
 
-        // Find optimal break points to avoid splitting elements across images
-        // Strategy: Maximize content per image while avoiding cutting elements mid-way
+        // Find optimal break points (now from breakpointCalculator.js)
         function findOptimalBreakPoints(container, targetHeight, totalHeight) {
-            const breakPoints = [0]; // Always start at 0
-            
-            // Get all block-level children that can serve as break points
-            const children = Array.from(container.children);
-            
-            if (children.length === 0) {
-                // Fallback to fixed intervals if no children
-                const numImages = Math.ceil(totalHeight / targetHeight);
-                for (let i = 1; i < numImages; i++) {
-                    breakPoints.push(i * targetHeight);
-                }
-                return breakPoints;
-            }
-            
-            let currentOffset = 0;
-            
-            while (currentOffset + targetHeight < totalHeight) {
-                const idealBreakPoint = currentOffset + targetHeight;
-                
-                // Check if any element would be cut at the ideal break point
-                let elementWouldBeCut = false;
-                let breakBeforeElement = null;
-                
-                for (const child of children) {
-                    const childTop = child.offsetTop;
-                    const childBottom = childTop + child.offsetHeight;
-                    
-                    // Check if this element straddles the ideal break point
-                    // (starts before and ends after the break point)
-                    if (childTop < idealBreakPoint && childBottom > idealBreakPoint) {
-                        elementWouldBeCut = true;
-                        
-                        // We need to break either before or after this element
-                        // Choose based on which gives us more content in the current image
-                        const contentBeforeElement = childTop - currentOffset;
-                        const contentIncludingElement = childBottom - currentOffset;
-                        
-                        // If breaking before gives us at least MIN_CONTENT_RATIO of target height, do that
-                        // Otherwise, include the entire element even if it goes over
-                        if (contentBeforeElement >= targetHeight * MIN_CONTENT_RATIO) {
-                            breakBeforeElement = childTop;
-                        } else if (contentIncludingElement <= targetHeight * MAX_CONTENT_RATIO) {
-                            // Include the entire element if it doesn't make image too large
-                            breakBeforeElement = childBottom;
-                        } else {
-                            // Element is too large, break before it
-                            breakBeforeElement = childTop;
-                        }
-                        break; // Found the first element that would be cut
-                    }
-                }
-                
-                // Set the next break point
-                if (elementWouldBeCut && breakBeforeElement !== null) {
-                    breakPoints.push(breakBeforeElement);
-                    currentOffset = breakBeforeElement;
-                } else {
-                    // No element would be cut, use the ideal break point
-                    breakPoints.push(idealBreakPoint);
-                    currentOffset = idealBreakPoint;
-                }
-            }
-            
-            return breakPoints;
+            return window.findOptimalBreakPoints(container, targetHeight, totalHeight);
         }
 
         // Generate canvas from off-screen preview

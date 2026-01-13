@@ -1,0 +1,33 @@
+{
+  "name": "text2image",
+  "version": "1.0.0",
+  "description": "Convert Markdown text to image with GitHub Flavored Markdown support",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "markdown",
+    "image",
+    "gfm",
+    "converter"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ]
+  }
+}
