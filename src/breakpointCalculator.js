@@ -68,9 +68,10 @@ function findOptimalBreakPoints(container, targetHeight, totalHeight) {
         
         // Set the next break point
         if (elementWouldBeCut && breakBeforeElement !== null) {
-            // Safety check: ensure we make progress
+            // Safety check: ensure we always make forward progress to avoid infinite loops
             if (breakBeforeElement <= currentOffset) {
-                breakBeforeElement = currentOffset + targetHeight;
+                // Force progress by using ideal break point
+                breakBeforeElement = idealBreakPoint;
             }
             breakPoints.push(breakBeforeElement);
             currentOffset = breakBeforeElement;
