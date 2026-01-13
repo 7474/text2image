@@ -535,6 +535,13 @@ console.log('Hello World!');
             text = text.replace(/([\u0080-\uFFFF])_([^_\n]+)_/g, '$1*$2*');
             text = text.replace(/_([^_\n]+)_([\u0080-\uFFFF])/g, '*$1*$2');
             
+            // Fix ** patterns adjacent to CJK punctuation marks like 「」『』、。！？
+            // These punctuation marks cause marked.js to not recognize ** as valid emphasis delimiters
+            // due to flanking delimiter rules. Convert directly to <strong> HTML tags to bypass parsing.
+            // Pattern: **<CJK-punct>content<CJK-punct>** where content doesn't contain * or newlines
+            // Unicode ranges: \u3000-\u303F (CJK Symbols and Punctuation), \uFF00-\uFFEF (Halfwidth and Fullwidth Forms)
+            text = text.replace(/\*\*([\u3000-\u303F\uFF00-\uFFEF][^\*\n]*[\u3000-\u303F\uFF00-\uFFEF])\*\*/g, '<strong>$1</strong>');
+            
             return text;
         }
 
